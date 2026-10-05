@@ -290,6 +290,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px 24px;justify-content:space-bet
 .daychk{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:14px;text-transform:capitalize}
 .daychk label{display:flex;gap:6px;align-items:center;cursor:pointer}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}.ph,.hl{transform:none!important}}
+.reels{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(260px,330px);gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:12px;scrollbar-width:thin}.reel{margin:0;scroll-snap-align:start}.reel-frame{position:relative;width:100%;aspect-ratio:9/19.5;background:var(--surface);overflow:hidden}.reel-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff}.reel figcaption{font-family:var(--display);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:10px;line-height:1.4}.reels-more{margin:18px 0 0}.reels-more a{color:var(--accent);display:inline-flex;gap:6px;align-items:center;text-decoration:none}.reels-more svg{width:14px;height:14px;flex:none}.rrow{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) auto auto;gap:8px;align-items:end;margin-bottom:8px}@media (max-width:700px){.reels{grid-auto-columns:80%}.rrow{grid-template-columns:1fr auto auto}.rrow .fld:first-child{grid-column:1/-1}}
 </style>
 </head>
 <body>
@@ -323,6 +324,9 @@ function clone(o){return JSON.parse(JSON.stringify(o))}
 function handle(){return (cur().profile.instagram||"").replace(/^@/,"").trim()}
 function igProfile(){var h=handle();return h?"https://www.instagram.com/"+encodeURIComponent(h)+"/":""}
 function validIg(u){return /^https:\/\/(www\.)?instagram\.com\/[^\s]+$/i.test((u||"").trim())}
+function reelInfo(u){var m=String(u||"").match(/instagram\.com\/(?:[^\/?#]+\/)?(reels?|p|tv)\/([A-Za-z0-9_-]+)/i);if(!m)return null;var k=m[1].toLowerCase();return {code:m[2],kind:(k==="p"?"p":k==="tv"?"tv":"reel")}}
+function reelEmbed(u){var r=reelInfo(u);return r?"https://www.instagram.com/"+r.kind+"/"+r.code+"/embed/":""}
+function reelsOf(s){return (s.reels||[]).filter(function(r){return reelInfo(r.ig)})}
 function frameNo(i){var n=i+1;return (n<10?"0":"")+n+"A"}
 
 var ICON={
@@ -437,7 +441,7 @@ function render(){
   var vis=filter==="Tout"?all:all.filter(function(i){return i.cat===filter});
   var sets=colSets(all),tl=[p.heroTop||"Photographe",p.heroL1||"Capturer",p.heroL2||"l'instant"];
   var html='';
-  html+='<header class="top"><div class="wrap"><a class="brand" href="#top" aria-label="'+esc(p.name)+', haut de page"><img src="'+LOGO_SRC+'" alt="'+esc(p.name)+'" width="300" height="112"></a><nav class="nav" aria-label="Sections"><a class="hide-sm" href="#portfolio">Portfolio</a><a class="hide-sm" href="#apropos">À propos</a><a class="hide-sm" href="#prestations">Prestations</a><a class="hide-sm" href="#contact">Contact</a><button class="btn small nav-cta" type="button" data-book="">Réservez</button></nav></div></header>';
+  html+='<header class="top"><div class="wrap"><a class="brand" href="#top" aria-label="'+esc(p.name)+', haut de page"><img src="'+LOGO_SRC+'" alt="'+esc(p.name)+'" width="300" height="112"></a><nav class="nav" aria-label="Sections"><a class="hide-sm" href="#portfolio">Portfolio</a>'+(reelsOf(s).length?'<a class="hide-sm" href="#reels">Reels</a>':'')+'<a class="hide-sm" href="#apropos">À propos</a><a class="hide-sm" href="#prestations">Prestations</a><a class="hide-sm" href="#contact">Contact</a><button class="btn small nav-cta" type="button" data-book="">Réservez</button></nav></div></header>';
 
   // Hero
   html+='<main id="top"><section class="hero"><div class="wrap"><h1 class="sr">'+esc(p.name)+' · '+esc(tl.join(" "))+'</h1><div class="collage" id="collage">';
@@ -467,6 +471,14 @@ function render(){
   vis.forEach(function(it){var gi=all.indexOf(it);
     html+='<button type="button" class="card" data-open="'+gi+'" aria-label="Agrandir : '+esc(it.title)+'"><img src="'+it.src+'" alt="'+esc(it.title)+'" loading="lazy">'+(it.example?'<span class="tag-ex">EXEMPLE</span>':'')+(it.ig?'<span class="tag-ig">'+ICON.cam+'Instagram</span>':'')+'<span class="bar">'+esc(it.title||"Sans titre")+'<small>'+esc(it.cat)+'</small></span></button>'});
   html+='</div></div></section>';
+
+  // Reels
+  var rl=reelsOf(s);
+  if(rl.length){
+    html+='<section class="block" id="reels"><div class="wrap"><div class="sec-head"><h2 class="h2">Reels <em>en mouvement</em></h2><span class="label">'+rl.length+' vidéo'+(rl.length>1?'s':'')+'</span></div><div class="reels">';
+    rl.forEach(function(r){html+='<figure class="reel"><div class="reel-frame"><iframe src="'+esc(reelEmbed(r.ig))+'" title="'+esc(r.title||"Reel Instagram")+'" loading="lazy" allowtransparency="true" allow="autoplay; encrypted-media; picture-in-picture; clipboard-write" scrolling="no"></iframe></div>'+(r.title?'<figcaption>'+esc(r.title)+'</figcaption>':'')+'</figure>'});
+    html+='</div>'+(igU?'<p class="reels-more"><a href="'+esc(igU)+'reels/" target="_blank" rel="noopener">Tous les reels sur Instagram '+ICON.arrow+'</a></p>':'')+'</div></section>';
+  }
 
   // Thèmes
   if(order.length>1){
@@ -657,6 +669,10 @@ function renderAdmin(){
       '</div><div class="pacts"><button class="ib" type="button" data-move="'+i+'" data-dir="-1" aria-label="Monter" '+(i===0?'disabled':'')+'>'+ICON.up+'</button><button class="ib" type="button" data-move="'+i+'" data-dir="1" aria-label="Descendre" '+(i===d.photos.length-1?'disabled':'')+'>'+ICON.down+'</button><button class="ib del" type="button" data-rm="'+i+'" aria-label="Retirer cette photo">'+ICON.del+'</button></div></div>';
   });
   h+='</div>';
+  h+='<h3>Reels</h3><p class="help">Collez le lien d\'un reel : sur Instagram, touchez « ⋯ » puis « Copier le lien ». La vidéo se lit directement sur le site, dans la section « Reels ».</p><div class="plist">';
+  d.reels.forEach(function(r,i){var bad=r.ig&&!reelInfo(r.ig);
+    h+='<div class="rrow">'+fld("rl-"+i+"-ig","Lien du reel",'<input id="rl-'+i+'-ig" class="'+(bad?'bad':'')+'" data-rl="'+i+'" data-k="ig" value="'+esc(r.ig)+'" placeholder="https://www.instagram.com/reel/…" inputmode="url">')+fld("rl-"+i+"-title","Titre (facultatif)",'<input id="rl-'+i+'-title" data-rl="'+i+'" data-k="title" value="'+esc(r.title)+'" placeholder="Ex. Coulisses d\'un mariage">')+'<button class="ib" type="button" data-rlmove="'+i+'" aria-label="Monter" '+(i===0?'disabled':'')+'>'+ICON.up+'</button><button class="ib del" type="button" data-rlrm="'+i+'" aria-label="Retirer ce reel">'+ICON.del+'</button></div>'});
+  h+='</div><button class="btn small ghost" type="button" data-adm="addreel">Ajouter un reel</button>';
   h+='<h3>Profil</h3><div class="grid2">'+
     fld("pf-name","Nom affiché",'<input id="pf-name" data-pf="name" value="'+esc(p.name)+'">')+
     fld("pf-tagline","Accroche",'<input id="pf-tagline" data-pf="tagline" value="'+esc(p.tagline)+'">')+
@@ -680,7 +696,7 @@ function renderAdmin(){
   root.innerHTML=h;
   updateMeter();
 }
-function prepDraft(d){if(!d.booking)d.booking={am:DEF_AM,pm:DEF_PM,closed:[]};d.booking.closed=(d.booking.closed||[]).map(Number);var p=d.profile;if(!p.heroTop)p.heroTop="Photographe";if(!p.heroL1)p.heroL1="Capturer";if(!p.heroL2)p.heroL2="l'instant";p.stats=(p.stats||[]).slice(0,3);while(p.stats.length<3)p.stats.push({value:"",label:""});}
+function prepDraft(d){if(!d.reels)d.reels=[];if(!d.booking)d.booking={am:DEF_AM,pm:DEF_PM,closed:[]};d.booking.closed=(d.booking.closed||[]).map(Number);var p=d.profile;if(!p.heroTop)p.heroTop="Photographe";if(!p.heroL1)p.heroL1="Capturer";if(!p.heroL2)p.heroL2="l'instant";p.stats=(p.stats||[]).slice(0,3);while(p.stats.length<3)p.stats.push({value:"",label:""});}
 function fld(id,label,input){return '<div class="fld"><label for="'+id+'">'+esc(label)+'</label>'+input+'</div>'}
 function updateMeter(){
   var m=document.getElementById("meter");if(!m||!draft)return;
@@ -735,7 +751,9 @@ function publish(){
   if(busy||!draft)return;
   var bad=draft.photos.filter(function(p){return p.ig&&!validIg(p.ig)});
   if(bad.length){setStatus(bad.length+" lien(s) Instagram ne sont pas valides. Ils doivent commencer par https://www.instagram.com/","err");return}
-  var next=clone(draft);next.rev=(STATE.rev||0)+1;next.profile.stats=(next.profile.stats||[]).filter(function(x){return String(x.value||"").trim()});
+  var badR=(draft.reels||[]).filter(function(r){return r.ig&&!reelInfo(r.ig)});
+  if(badR.length){setStatus(badR.length+" lien(s) de reel ne sont pas valides. Copiez le lien depuis Instagram (« ⋯ » puis « Copier le lien »).","err");return}
+  var next=clone(draft);next.rev=(STATE.rev||0)+1;next.reels=(next.reels||[]).filter(function(r){return String(r.ig||"").trim()});next.profile.stats=(next.profile.stats||[]).filter(function(x){return String(x.value||"").trim()});
   next.profile.instagram=(next.profile.instagram||"").replace(/^@/,"").replace(/^https?:\/\/(www\.)?instagram\.com\//i,"").replace(/\/.*$/,"").trim();
   var html=buildDoc(next);
   if(new Blob([html]).size>LIMIT){setStatus("Le site dépasse 15 Mo : retirez quelques photos avant de publier.","err");return}
@@ -765,6 +783,9 @@ document.addEventListener("click",function(ev){
   var a=t.getAttribute("data-adm");
   if(a==="close"){draft=null;busy=false;render();renderAdmin();return}
   if(a==="publish"){publish();return}
+  if(a==="addreel"){draft.reels.unshift({id:Date.now().toString(36),ig:"",title:""});renderAdmin();var f=document.getElementById("rl-0-ig");if(f)f.focus();return}
+  if(t.hasAttribute("data-rlrm")){draft.reels.splice(+t.getAttribute("data-rlrm"),1);render();renderAdmin();return}
+  if(t.hasAttribute("data-rlmove")){var ri=+t.getAttribute("data-rlmove"),ra=draft.reels;if(ri<1)return;var rt=ra[ri];ra[ri]=ra[ri-1];ra[ri-1]=rt;render();renderAdmin();return}
   if(a==="addsvc"){draft.services.push({name:"",detail:"",price:"Sur demande"});renderAdmin();return}
   if(a==="restore"){var s=readStash();if(s){s.rev=STATE.rev;draft=s;prepDraft(draft);render();renderAdmin();setStatus("Brouillon repris. Vérifiez puis publiez.","ok")}return}
   if(t.hasAttribute("data-move")){var i=+t.getAttribute("data-move"),dir=+t.getAttribute("data-dir"),arr=draft.photos,j=i+dir;if(j<0||j>=arr.length)return;var tmp=arr[i];arr[i]=arr[j];arr[j]=tmp;render();renderAdmin();return}
@@ -777,6 +798,7 @@ document.addEventListener("input",function(ev){
   if(el.hasAttribute("data-bkf")){if(BK){BK.f[el.getAttribute("data-bkf")]=el.value;bkSendState()}return}
   if(!draft)return;
   if(el.hasAttribute("data-ph")){var ph=draft.photos[+el.getAttribute("data-ph")];if(ph){ph[el.getAttribute("data-k")]=el.value;if(el.getAttribute("data-k")==="ig")el.classList.toggle("bad",!!el.value&&!validIg(el.value))}}
+  else if(el.hasAttribute("data-rl")){var rr=draft.reels[+el.getAttribute("data-rl")];if(rr){rr[el.getAttribute("data-k")]=el.value;if(el.getAttribute("data-k")==="ig")el.classList.toggle("bad",!!el.value&&!reelInfo(el.value))}}
   else if(el.hasAttribute("data-pf")){draft.profile[el.getAttribute("data-pf")]=el.value}
   else if(el.hasAttribute("data-bkcfg")){draft.booking[el.getAttribute("data-bkcfg")]=el.value}
   else if(el.hasAttribute("data-closed")){var dn=+el.getAttribute("data-closed"),arr=draft.booking.closed,ix=arr.indexOf(dn);if(el.checked&&ix<0)arr.push(dn);if(!el.checked&&ix>=0)arr.splice(ix,1)}
